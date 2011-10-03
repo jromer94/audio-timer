@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	android:layout_width="wrap_content" android:layout_height="wrap_content">
+	<RelativeLayout 
+		android:id="@+id/TimerChronometerLayout"
+		android:layout_width="fill_parent"
+		android:layout_height="wrap_content" >
+		<Chronometer
+  			android:id="@+id/ChronoDisplay"
+  			android:layout_width="wrap_content"
+  			android:layout_height="wrap_content"
+  			android:layout_gravity="center"
+  		/>
+	</RelativeLayout>
+	<LinearLayout android:id="@+id/TimerStartStopButtonLayout"
+		android:layout_width="fill_parent" android:layout_height="wrap_content"
+		android:layout_alignParentBottom="true">
+		<Button android:id="@+id/StartStopTimerButton"
+			android:layout_width="fill_parent"
+			android:layout_height="wrap_content"
+			android:text="@string/StartStopTimerButtonText"
+		/>
+	</LinearLayout>
+		<ListView
+		android:id="@+id/TimerListView"
+		android:layout_width="fill_parent"
+		android:layout_height="wrap_content"
+		android:layout_below="@id/TimerChronometerLayout"
+		android:layout_above="@id/TimerStartStopButtonLayout"
+	/>
+
+</RelativeLayout>

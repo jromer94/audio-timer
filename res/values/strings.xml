@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AudioTimer</string>
+    <string name="ok_button">OK</string>
+    <string name="cancel_button">Cancel</string>
+    <string name="VolumeDialogButtonText">Get Threshold</string>
+    <string name="StartStopTimerButtonText">Start/Stop</string>
+    
+    <string name="ResetTimerButtonText">Reset</string>
+<string name="StartTimerActvityButtonText">Timer</string>
+</resources>
