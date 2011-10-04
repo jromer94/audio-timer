@@ -1,10 +1,15 @@
 package com.thems.timer.capture;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.Vector;
 
 import android.media.AudioFormat;
+import android.media.AudioManager;
 import android.media.AudioRecord;
+import android.media.AudioTrack;
 import android.media.MediaRecorder;
 import android.util.Log;
 
@@ -20,18 +25,73 @@ public class AudioCapture extends Thread {
 	private volatile boolean mIsRunning = false;
 	private static final Vector<AudioLevelListener> mListeners = new Vector<AudioLevelListener>();
 	private AudioRecord mRecordInstance;
+	
+	private final static Set<Integer> mSampleRates;
+	private final static Set<Integer> mAudioFormats;
+	private final static Set<Integer> mChannelConfigs;
+	
+	static {
+		mSampleRates = new HashSet<Integer>();
+		mSampleRates.add(8000);
+		mSampleRates.add(11025);
+		mSampleRates.add(22050);
+		mSampleRates.add(44100);
+		mSampleRates.add(AudioTrack.getNativeOutputSampleRate(AudioManager.STREAM_SYSTEM));
+		
+		mAudioFormats = new HashSet<Integer>();
+		mAudioFormats.add(AudioFormat.ENCODING_PCM_8BIT);
+		mAudioFormats.add(AudioFormat.ENCODING_PCM_16BIT);
+		
+		mChannelConfigs = new HashSet<Integer>();
+		mChannelConfigs.add(AudioFormat.CHANNEL_CONFIGURATION_MONO);
+		mChannelConfigs.add(AudioFormat.CHANNEL_CONFIGURATION_STEREO);
+	}
+	
+	private class AudioConfig implements Comparable<AudioConfig>{
+		public int samplerate = 0;
+		public int audioformat = 0;
+		public int channelconfig = 0;
+		public int buffersize = 0;
+		
+		public double buffersPerSecond = 0;
+		public double maxvolume = 0;
+		
+		@Override
+		public int compareTo(AudioConfig arg0) {
+			//value minimal delay over all else
+			if (this.buffersPerSecond < arg0.buffersPerSecond) {
+				return 1;
+			} else if (this.buffersPerSecond > arg0.buffersPerSecond) {
+				return -1;
+			} else {
+				return 0;
+			}
+		}
+		
+		protected void calculateBuffersPerSecond() {
+			double bytesPerSecond = (double)samplerate;
+			if (audioformat == AudioFormat.ENCODING_PCM_16BIT) {
+				bytesPerSecond *= 2d;
+			}
+			
+			buffersPerSecond = bytesPerSecond / (double)buffersize;			
+		}
+		
+		public void calculateMaxVolume() {
+			if (audioformat == AudioFormat.ENCODING_PCM_8BIT) {
+				maxvolume = (Math.pow(2, 8) - 1) / 2d;
+			} else if (audioformat == AudioFormat.ENCODING_PCM_16BIT) {
+				maxvolume = (Math.pow(2, 16) - 1) / 2d;
+			}
+		}
+	}
 
 	private AudioCapture() {
 		mIsRunning = false;
-
-		int[] sampleRates = new int[] { 8000, 11025, 22050, 44100 };
-		for (int rate : sampleRates) {
-			for (short audioFormat : new short[] {
-					AudioFormat.ENCODING_PCM_8BIT,
-					AudioFormat.ENCODING_PCM_16BIT }) {
-				for (short channelConfig : new short[] {
-						AudioFormat.CHANNEL_CONFIGURATION_MONO,
-						AudioFormat.CHANNEL_CONFIGURATION_STEREO }) {
+		ArrayList<AudioConfig> configurations = new ArrayList<AudioConfig>();
+		for (int rate : mSampleRates) {
+			for (int audioFormat : mAudioFormats) {
+				for (int channelConfig : mChannelConfigs) {
 					try {
 						Log.d("Attempting rate", +rate + "Hz, bits: "
 								+ audioFormat + ", channel: " + channelConfig);
@@ -46,15 +106,14 @@ public class AudioCapture extends Thread {
 
 							if (recorder.getState() == AudioRecord.STATE_INITIALIZED) {
 								recorder.stop();
-								FREQUENCY = rate;
-								CHANNEL = channelConfig;
-								ENCODING = audioFormat;
-								BUFFERSIZE = bufferSize;
-								if (ENCODING == AudioFormat.ENCODING_PCM_8BIT) {
-									MAXAUDIOVALUE = (Math.pow(2, 8) - 1) / 2d;
-								} else if (ENCODING == AudioFormat.ENCODING_PCM_16BIT) {
-									MAXAUDIOVALUE = (Math.pow(2, 16) - 1) / 2d;
-								}
+								AudioConfig config = new AudioConfig();
+								config.audioformat = audioFormat;
+								config.channelconfig = channelConfig;
+								config.samplerate = rate;
+								config.buffersize = bufferSize;
+								config.calculateMaxVolume();
+								config.calculateBuffersPerSecond();
+								configurations.add(config);
 							}
 						}
 					} catch (Exception e) {
@@ -62,6 +121,22 @@ public class AudioCapture extends Thread {
 					}
 				}
 			}
+		}
+		Collections.sort(configurations);
+		Log.d("AudioConfigurations", "Number of valid configs: " + configurations.size());
+		if (configurations.size() > 0) {
+			AudioConfig theBest = configurations.get(0);
+			FREQUENCY = theBest.samplerate;
+			CHANNEL = theBest.channelconfig;
+			ENCODING = theBest.audioformat;
+			BUFFERSIZE = theBest.buffersize;
+			MAXAUDIOVALUE = theBest.maxvolume;
+			Log.d("AudioConfigurations", "Frequency     : " + FREQUENCY);
+			Log.d("AudioConfigurations", "Channel       : " + CHANNEL);
+			Log.d("AudioConfigurations", "Encoding      : " + ENCODING);
+			Log.d("AudioConfigurations", "BufferSize    : " + BUFFERSIZE);
+			Log.d("AudioConfigurations", "MaxAudioValue : " + MAXAUDIOVALUE);
+			Log.d("AudioConfigurations", "buffers per s : " + theBest.buffersPerSecond);
 		}
 	}
 
